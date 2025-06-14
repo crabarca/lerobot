@@ -1,0 +1,29 @@
+robot:
+  type: so101_follower
+  port: /dev/tty.usbmodem59700733641
+  cameras:
+    observation.image:
+      type: opencv
+      index_or_path: 1
+      fps: 30
+      width: 1920
+      height: 1080
+  id: black
+# teleop:
+#   type: so101_leader
+#   port: /dev/tty.usbmodem58760431551
+#   id: blue
+dataset:
+  repo_id: crabarca/eval_smolvla_test1
+  # num_episodes: 2
+  single_task: "Put a chip in the first column"
+policy:
+  type: smolvla
+  # pretrained_name_or_path: 'lerobot/smolvla_base'
+  # n_obs_steps: 1
+  # chunk_size: 50
+  # n_action_steps: 50
+  # model: /smolvla_model
+  # max_steps: 100
+  # temperature: 0.7
+  # top_p: 0.9
