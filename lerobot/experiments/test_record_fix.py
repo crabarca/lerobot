@@ -52,7 +52,8 @@ def test_record_fix():
     
     dataset_config = DatasetRecordConfig(
         repo_id=f"{HF_USER}/trash_pickup_v1",
-        single_task="Grab the blue bottle cap and put it into the left box",
+        # single_task="Grab the blue bottle cap and put it into the left box",
+        single_task="Grab the brown paper ball and put it into the right box",
         num_episodes=30,
         episode_time_s=15,  # Short episode for testing
         reset_time_s=5,

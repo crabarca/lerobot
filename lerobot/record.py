@@ -169,6 +169,7 @@ def record_loop(
     control_time_s: int | None = None,
     single_task: str | None = None,
     display_data: bool = False,
+    end_powered: bool = True
 ):
     if dataset is not None and dataset.fps != fps:
         raise ValueError(f"The dataset fps should be equal to requested fps ({dataset.fps} != {fps}).")
@@ -234,6 +235,11 @@ def record_loop(
         busy_wait(1 / fps - dt_s)
 
         timestamp = time.perf_counter() - start_episode_t
+        if events["exit_early"]:
+            events["exit_early"] = False
+            break
+    if not end_powered:
+        robot
 
 
 @parser.wrap()
@@ -286,7 +292,7 @@ def record(cfg: RecordConfig) -> LeRobotDataset:
     listener, events = init_keyboard_listener()
 
     for recorded_episodes in range(cfg.dataset.num_episodes):
-        log_say(f"Recording episode {dataset.num_episodes}", cfg.play_sounds)
+        log_say(f"Here we go again. episode {dataset.num_episodes}", cfg.play_sounds)
         record_loop(
             robot=robot,
             events=events,
@@ -304,7 +310,7 @@ def record(cfg: RecordConfig) -> LeRobotDataset:
         if not events["stop_recording"] and (
             (recorded_episodes < cfg.dataset.num_episodes - 1) or events["rerecord_episode"]
         ):
-            log_say("Reset the environment", cfg.play_sounds)
+            log_say("Yo, reset the damn environment", cfg.play_sounds)
             record_loop(
                 robot=robot,
                 events=events,
@@ -316,7 +322,7 @@ def record(cfg: RecordConfig) -> LeRobotDataset:
             )
 
         if events["rerecord_episode"]:
-            log_say("Re-record episode", cfg.play_sounds)
+            log_say("bruh. come on. let's rerecord.", cfg.play_sounds)
             events["rerecord_episode"] = False
             events["exit_early"] = False
             dataset.clear_episode_buffer()
@@ -327,7 +333,7 @@ def record(cfg: RecordConfig) -> LeRobotDataset:
         if events["stop_recording"]:
             break
 
-    log_say("Stop recording", cfg.play_sounds, blocking=True)
+    log_say("Finally done", cfg.play_sounds, blocking=True)
 
     robot.disconnect()
     teleop.disconnect()
@@ -338,7 +344,7 @@ def record(cfg: RecordConfig) -> LeRobotDataset:
     if cfg.dataset.push_to_hub:
         dataset.push_to_hub(tags=cfg.dataset.tags, private=cfg.dataset.private)
 
-    log_say("Exiting", cfg.play_sounds)
+    log_say("See ya", cfg.play_sounds)
     return dataset
 
 
