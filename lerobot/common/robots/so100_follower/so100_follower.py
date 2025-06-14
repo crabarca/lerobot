@@ -158,12 +158,24 @@ class SO100Follower(Robot):
         if not self.is_connected:
             raise DeviceNotConnectedError(f"{self} is not connected.")
 
-        # Read arm position
+        # Read arm position with retry logic
         start = time.perf_counter()
-        obs_dict = self.bus.sync_read("Present_Position")
-        obs_dict = {f"{motor}.pos": val for motor, val in obs_dict.items()}
-        dt_ms = (time.perf_counter() - start) * 1e3
-        logger.debug(f"{self} read state: {dt_ms:.1f}ms")
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                obs_dict = self.bus.sync_read("Present_Position")
+                obs_dict = {f"{motor}.pos": val for motor, val in obs_dict.items()}
+                dt_ms = (time.perf_counter() - start) * 1e3
+                logger.debug(f"{self} read state: {dt_ms:.1f}ms")
+                break
+            except ConnectionError as e:
+                if attempt < max_retries - 1:
+                    logger.warning(f"Motor read failed (attempt {attempt + 1}/{max_retries}): {e}")
+                    time.sleep(0.01)  # Small delay before retry
+                    continue
+                else:
+                    logger.error(f"Motor read failed after {max_retries} attempts: {e}")
+                    raise
 
         # Capture images from cameras
         for cam_key, cam in self.cameras.items():
@@ -195,12 +207,37 @@ class SO100Follower(Robot):
         # Cap goal position when too far away from present position.
         # /!\ Slower fps expected due to reading from the follower.
         if self.config.max_relative_target is not None:
-            present_pos = self.bus.sync_read("Present_Position")
-            goal_present_pos = {key: (g_pos, present_pos[key]) for key, g_pos in goal_pos.items()}
-            goal_pos = ensure_safe_goal_position(goal_present_pos, self.config.max_relative_target)
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    present_pos = self.bus.sync_read("Present_Position")
+                    goal_present_pos = {key: (g_pos, present_pos[key]) for key, g_pos in goal_pos.items()}
+                    goal_pos = ensure_safe_goal_position(goal_present_pos, self.config.max_relative_target)
+                    break
+                except ConnectionError as e:
+                    if attempt < max_retries - 1:
+                        logger.warning(f"Motor read failed during action clipping (attempt {attempt + 1}/{max_retries}): {e}")
+                        time.sleep(0.01)  # Small delay before retry
+                        continue
+                    else:
+                        logger.error(f"Motor read failed during action clipping after {max_retries} attempts: {e}")
+                        raise
 
-        # Send goal position to the arm
-        self.bus.sync_write("Goal_Position", goal_pos)
+        # Send goal position to the arm with retry logic
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                self.bus.sync_write("Goal_Position", goal_pos)
+                break
+            except ConnectionError as e:
+                if attempt < max_retries - 1:
+                    logger.warning(f"Motor write failed (attempt {attempt + 1}/{max_retries}): {e}")
+                    time.sleep(0.01)  # Small delay before retry
+                    continue
+                else:
+                    logger.error(f"Motor write failed after {max_retries} attempts: {e}")
+                    raise
+
         return {f"{motor}.pos": val for motor, val in goal_pos.items()}
 
     def disconnect(self):

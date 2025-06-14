@@ -128,11 +128,22 @@ class SO100Leader(Teleoperator):
 
     def get_action(self) -> dict[str, float]:
         start = time.perf_counter()
-        action = self.bus.sync_read("Present_Position")
-        action = {f"{motor}.pos": val for motor, val in action.items()}
-        dt_ms = (time.perf_counter() - start) * 1e3
-        logger.debug(f"{self} read action: {dt_ms:.1f}ms")
-        return action
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                action = self.bus.sync_read("Present_Position")
+                action = {f"{motor}.pos": val for motor, val in action.items()}
+                dt_ms = (time.perf_counter() - start) * 1e3
+                logger.debug(f"{self} read action: {dt_ms:.1f}ms")
+                return action
+            except ConnectionError as e:
+                if attempt < max_retries - 1:
+                    logger.warning(f"Motor read failed (attempt {attempt + 1}/{max_retries}): {e}")
+                    time.sleep(0.01)  # Small delay before retry
+                    continue
+                else:
+                    logger.error(f"Motor read failed after {max_retries} attempts: {e}")
+                    raise
 
     def send_feedback(self, feedback: dict[str, float]) -> None:
         # TODO(rcadene, aliberts): Implement force feedback
