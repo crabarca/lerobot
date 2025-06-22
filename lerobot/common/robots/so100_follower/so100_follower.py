@@ -92,6 +92,7 @@ class SO100Follower(Robot):
 
         self.bus.connect()
         if not self.is_calibrated and calibrate:
+            print(self.is_calibrated, calibrate)
             self.calibrate()
 
         for cam in self.cameras.values():
